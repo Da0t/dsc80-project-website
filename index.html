@@ -4,37 +4,127 @@
   <meta charset="UTF-8">
   <title>Does First Baron Control Predict Match Outcomes in Competitive LoL?</title>
   <style>
-    body { font-family: sans-serif; max-width: 860px; margin: 40px auto; padding: 0 24px; line-height: 1.6; }
+    body { font-family: sans-serif; max-width: 860px; margin: 40px auto; padding: 0 24px; line-height: 1.7; color: #222; }
     h1 { font-size: 1.6em; }
-    h2 { border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+    h2 { border-bottom: 2px solid #4a90d9; padding-bottom: 4px; margin-top: 2em; color: #1a3a5c; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.9em; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+    th { background: #f0f4f8; }
+    iframe { width: 100%; height: 500px; border: none; margin: 1em 0; }
+    code { background: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
   </style>
 </head>
 <body>
-  <h1>Does First Baron Control Predict Match Outcomes in Competitive League of Legends?</h1>
-  <p>By Dat Nguyen &mdash; DSC 80, UCSD Spring 2026</p>
 
-  <h2>Introduction</h2>
-  <p>Coming soon.</p>
+<h1>Does First Baron Control Predict Match Outcomes in Competitive League of Legends?</h1>
+<p><strong>By Dat Nguyen</strong> &mdash; DSC 80, UCSD Spring 2026</p>
 
-  <h2>Data Cleaning and Exploratory Data Analysis</h2>
-  <p>Coming soon.</p>
+<h2>Introduction</h2>
+<p>
+  This project uses the <strong>2022 Oracle's Elixir</strong> professional match dataset, the gold-standard
+  source for competitive LoL statistics. The full dataset contains <strong>150,348 rows</strong> and
+  <strong>165 columns</strong>, covering <strong>12,529 unique games</strong> across <strong>55 leagues</strong>.
+  Our analysis focuses on the <strong>21,282 complete team-level rows</strong> after cleaning.
+</p>
+<p><strong>Central Research Question:</strong> Do teams that secure the first Baron Nashor win at a significantly higher rate than teams that do not?</p>
+<p>Baron Nashor is the most powerful neutral objective in the game. Securing it grants a strong team-wide buff and is widely considered the single most game-deciding moment in competitive play.</p>
+<table>
+  <tr><th>Column</th><th>Description</th></tr>
+  <tr><td><code>result</code></td><td>Game outcome: 1 = win, 0 = loss</td></tr>
+  <tr><td><code>side</code></td><td>Blue or Red side</td></tr>
+  <tr><td><code>league</code></td><td>Professional league (e.g. LCK, LCS)</td></tr>
+  <tr><td><code>firstbaron</code></td><td>1 if this team secured the first Baron</td></tr>
+  <tr><td><code>golddiffat15</code></td><td>Gold lead vs. opponent at 15 minutes</td></tr>
+  <tr><td><code>xpdiffat15</code></td><td>XP lead vs. opponent at 15 minutes</td></tr>
+  <tr><td><code>csdiffat15</code></td><td>CS lead vs. opponent at 15 minutes</td></tr>
+  <tr><td><code>firstdragon</code></td><td>1 if this team secured the first dragon</td></tr>
+  <tr><td><code>firstherald</code></td><td>1 if this team secured the Rift Herald first</td></tr>
+</table>
 
-  <h2>Assessment of Missingness</h2>
-  <p>Coming soon.</p>
+<h2>Data Cleaning and Exploratory Data Analysis</h2>
+<p>We applied four cleaning steps:</p>
+<ol>
+  <li><strong>Filter to team-level rows</strong> (<code>position == 'team'</code>) — drops 125,290 player rows, keeps 25,058 team rows.</li>
+  <li><strong>Drop partial rows</strong> (<code>datacompleteness == 'partial'</code>) — removes 3,776 rows from leagues that do not share full stats, leaving 21,282 complete rows.</li>
+  <li><strong>Convert boolean columns</strong> (<code>firstbaron</code>, <code>result</code>, etc.) from float to boolean dtype.</li>
+  <li><strong>Add <code>gamelength_min</code></strong> — game length in minutes for readability.</li>
+</ol>
+<p>Game lengths are roughly bell-shaped and centered around <strong>31–32 minutes</strong>. Team kill counts are right-skewed, averaging around 14–15 kills per team.</p>
+<p>First Baron is the strongest single objective predictor: teams that secure it win <strong>84.9%</strong> of the time, far above First Tower (68%), First Blood (61%), First Herald (58%), and First Dragon (58%).</p>
+<p>Winning teams hold a mean gold difference of <strong>+1,726</strong> at 15 minutes vs. <strong>-1,726</strong> for losing teams, though there is substantial overlap.</p>
+<table>
+  <tr><th>League</th><th>Games</th><th>Avg Length (min)</th><th>Avg Kills</th><th>First Baron Rate</th></tr>
+  <tr><td>LCK</td><td>467</td><td>33.7</td><td>11.5</td><td>47.4%</td></tr>
+  <tr><td>LCS</td><td>306</td><td>33.0</td><td>12.0</td><td>48.2%</td></tr>
+  <tr><td>UPL</td><td>405</td><td>28.6</td><td>19.3</td><td>43.6%</td></tr>
+  <tr><td>VCS</td><td>325</td><td>30.0</td><td>15.7</td><td>48.5%</td></tr>
+</table>
 
-  <h2>Hypothesis Testing</h2>
-  <p>Coming soon.</p>
+<h2>Assessment of Missingness</h2>
+<p>
+  One column we believe is <strong>Not Missing At Random (NMAR)</strong> is <code>split</code>.
+  Playoff games and international tournaments (Worlds, MSI) have no split assignment by design — the missingness
+  is caused by the type of event, not a data collection failure. To make this column MAR, we would need an
+  additional <code>event_type</code> column distinguishing regular season from playoff and international events.
+</p>
+<p><strong>Permutation Test 1 — split missingness vs. golddiffat15:</strong> Gold difference is structurally symmetric around zero in any complete-game subset. We fail to reject H0 (p &gt; 0.05). The missingness of <code>split</code> does NOT depend on in-game gold performance.</p>
+<p><strong>Permutation Test 2 — split missingness vs. playoffs flag:</strong> We reject H0 (p &lt; 0.0001). The <code>playoffs</code> column is significantly associated with <code>split</code> being missing, confirming our NMAR reasoning.</p>
 
-  <h2>Framing a Prediction Problem</h2>
-  <p>Coming soon.</p>
+<h2>Hypothesis Testing</h2>
+<h3>Test 1: Does securing first Baron lead to a higher win rate?</h3>
+<p><strong>Null:</strong> The win rate of teams that secure first Baron is the same as teams that do not. Any difference is due to random chance.</p>
+<p><strong>Alternative:</strong> Teams that secure first Baron have a higher win rate (one-sided).</p>
+<p><strong>Test statistic:</strong> Difference in win rates (baron secured minus not secured). <strong>Significance level:</strong> 0.05.</p>
+<p><strong>Result:</strong> Observed difference = 0.663 (84.9% vs. 18.6%). p-value ≈ 0.0000. We reject the null. The data is consistent with teams that secure first Baron winning at a significantly higher rate — the effect is far too large to be explained by chance alone.</p>
 
-  <h2>Baseline Model</h2>
-  <p>Coming soon.</p>
+<h3>Test 2: Does Blue side have a higher win rate than Red side?</h3>
+<p><strong>Null:</strong> Blue and Red side win at the same rate. Any difference is due to random chance.</p>
+<p><strong>Alternative:</strong> Blue and Red side win at different rates (two-sided).</p>
+<p><strong>Test statistic:</strong> Difference in win rates (Blue minus Red). <strong>Significance level:</strong> 0.05.</p>
+<p><strong>Result:</strong> Observed difference = 0.046 (52.3% vs. 47.7%). p-value ≈ 0.0000. We reject the null. The data is consistent with Blue side having a win rate advantage, aligning with the belief that Blue side's last-pick draft advantage provides a meaningful edge.</p>
 
-  <h2>Final Model</h2>
-  <p>Coming soon.</p>
+<h2>Framing a Prediction Problem</h2>
+<p>
+  We frame this as a <strong>binary classification</strong> problem: predict whether a team wins (<code>result = 1</code>)
+  or loses (<code>result = 0</code>) using only information available at the <strong>15-minute mark</strong>.
+</p>
+<p><strong>Response variable:</strong> <code>result</code> — binary and perfectly balanced (50% win, 50% loss).</p>
+<p><strong>Evaluation metric:</strong> Accuracy. Since classes are perfectly balanced, accuracy is a fair and interpretable measure. A random baseline achieves 50%.</p>
+<p>We intentionally exclude all post-game statistics (total kills, towers, barons) since those are only known after the game ends.</p>
 
-  <h2>Fairness Analysis</h2>
-  <p>Coming soon.</p>
+<h2>Baseline Model</h2>
+<p>A <strong>Logistic Regression</strong> model inside a single sklearn <code>Pipeline</code> with two features:</p>
+<ul>
+  <li><strong><code>golddiffat15</code></strong> (quantitative) — standardized with <code>StandardScaler</code>.</li>
+  <li><strong><code>side</code></strong> (nominal) — one-hot encoded with <code>OneHotEncoder</code>.</li>
+</ul>
+<p><strong>Feature types: 1 quantitative, 0 ordinal, 1 nominal.</strong></p>
+<p><strong>Test accuracy: 74.0%</strong> on the held-out test set. This is a reasonable starting point — well above the 50% random baseline — but a 26% error rate limits its practical usefulness. The linear decision boundary also cannot capture non-linear interactions between features.</p>
+
+<h2>Final Model</h2>
+<p>We switched to a <strong>Random Forest</strong> classifier and added three categories of improvements:</p>
+<ul>
+  <li><strong><code>xpdiffat15</code></strong> (quantitative) — XP advantage translates to higher champion levels, directly affecting fight outcomes.</li>
+  <li><strong><code>csdiffat15</code></strong> (quantitative) — CS difference measures farming efficiency, a separate dimension of early performance that gold alone misses.</li>
+  <li><strong><code>early_obj_score</code></strong> (engineered) — sum of <code>firstblood + firstdragon + firstherald</code> (0–3), capturing overall early-game map control as a single numeric signal.</li>
+</ul>
+<p>We tuned <code>n_estimators</code>, <code>max_depth</code>, and <code>min_samples_leaf</code> using <code>GridSearchCV</code> with 5-fold cross-validation.</p>
+<p><strong>Best params:</strong> max_depth=5, min_samples_leaf=1, n_estimators=200.</p>
+<p><strong>Test accuracy: 74.4%</strong> vs. baseline 74.0%. The improvement is modest but meaningful — the additional features give the model a richer view of the 15-minute game state, and Random Forest captures non-linear interactions that logistic regression cannot. A natural next step would be XGBoost, which typically outperforms Random Forest on tabular data through sequential error correction.</p>
+
+<h2>Fairness Analysis</h2>
+<p>
+  We compare model accuracy between <strong>LCK</strong> (Korea) and <strong>LCS</strong> (North America).
+</p>
+<p><strong>Null:</strong> The model performs equally well on LCK and LCS games. Any difference is due to random chance.</p>
+<p><strong>Alternative:</strong> The model performs differently on LCK vs. LCS games.</p>
+<p><strong>Test statistic:</strong> |accuracy on LCK − accuracy on LCS|. <strong>Significance level:</strong> 0.05.</p>
+<table>
+  <tr><th>League</th><th>Accuracy</th><th>n</th></tr>
+  <tr><td>LCK</td><td>73.1%</td><td>171</td></tr>
+  <tr><td>LCS</td><td>60.2%</td><td>123</td></tr>
+</table>
+<p><strong>Result:</strong> Observed |difference| = 0.129. p-value ≈ 0.024. We reject the null. The model performs significantly worse on LCS games. A likely reason is that LCS gameplay is more variable — teams can throw large gold leads or stage surprising comebacks — making the 15-minute snapshot a weaker predictor compared to the more disciplined LCK style.</p>
+
 </body>
 </html>
